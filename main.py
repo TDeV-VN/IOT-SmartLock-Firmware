@@ -82,6 +82,12 @@ def validate_secret_code(code: str):
         raise HTTPException(status_code=500, detail=f"Redis error: {str(e)}")
     
 # Mock esp32 webserver
+@app.get("/scan-wifi/")
+async def scan_wifi():
+    # Mô phỏng danh sách wifi
+    wifi_list = [f"SlockNet_{i}" for i in range(1, 6)]
+    return JSONResponse(content=wifi_list)
+
 @app.get("/mac/")
 async def get_mac():
     # Giả lập MAC address
