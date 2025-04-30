@@ -1,9 +1,11 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, Form
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
 import firebase_admin
 from firebase_admin import credentials, messaging
 import redis
+from fastapi.middleware.cors import CORSMiddleware
+import random
 
 # pip freeze > requirements.txt
 
@@ -24,6 +26,14 @@ if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 
 app = FastAPI()
+
+# CORS cho frontend có thể truy cập từ mọi nơi
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Định nghĩa schema cho gửi FCM theo topic
 class FCMTopicMessage(BaseModel):
@@ -70,3 +80,32 @@ def validate_secret_code(code: str):
             return JSONResponse(content={"valid": False}, status_code=400)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Redis error: {str(e)}")
+    
+# Mock esp32 webserver
+@app.get("/mac/")
+async def get_mac():
+    # Giả lập MAC address
+    mac = "AA:BB:CC:{:02X}:{:02X}:{:02X}".format(
+        random.randint(0, 255),
+        random.randint(0, 255),
+        random.randint(0, 255)
+    )
+    return PlainTextResponse(mac)
+
+@app.post("/connect-wifi/")
+async def connect_wifi(
+    ssid: str = Form(...),
+    password: str = Form(...),
+    uuid: str = Form(...)
+):
+    # Mô phỏng quá trình kết nối
+    print(f"Connecting to SSID: {ssid}, UUID: {uuid}")
+    if ssid == "fail":
+        return PlainTextResponse("Connection failed", status_code=500)
+    return PlainTextResponse("Connected")
+
+@app.get("/shutdown-ap/")
+async def shutdown_ap():
+    # Giả lập shutdown AP
+    print("Shutting down AP...")
+    return PlainTextResponse("SoftAP turned off")
