@@ -63,7 +63,16 @@ async def send_to_topic(message: FCMTopicMessage):
 @app.post("/set-secret-code")
 def set_secret_code(code: str):
     try:
-        r.set("secret-code", code, ex=900)
+         # Tách key (lockId) và value (secretCode) từ input_data.code
+        received_code = code.strip()
+        if len(received_code) < 13:
+             raise HTTPException(status_code=422, detail="Input code is too short.")
+
+        redis_key = received_code[:12]  # 12 ký tự đầu làm key
+        redis_value = received_code[12:] # Phần còn lại làm value
+
+        print(f"Setting Redis Key: '{redis_key}', Value: '{redis_value}'")
+        r.set(redis_key, redis_value, ex=900) # Lưu với key=lockId, value=secretCode
         return JSONResponse(content={"message": "Secret code set successfully"}, status_code=200)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Redis error: {str(e)}")
@@ -71,10 +80,17 @@ def set_secret_code(code: str):
 @app.post("/validate-secret-code")
 def validate_secret_code(code: str):
     try:
-        stored_code = r.get("secret-code")
+        received_code = code.strip()
+        if len(received_code) < 13:
+             raise HTTPException(status_code=422, detail="Input code is too short.")
+
+        lock_id_from_input = received_code[:12]
+        secret_code_from_input = received_code[12:]
+        
+        stored_code = r.get(lock_id_from_input)
         if stored_code is None:
-            raise HTTPException(status_code=404, detail="No code found or it has expired")
-        if stored_code == code:
+            return JSONResponse(content={"valid": False}, status_code=200)
+        if stored_code == secret_code_from_input:
             return JSONResponse(content={"valid": True}, status_code=200)
         else:
             return JSONResponse(content={"valid": False}, status_code=200)
