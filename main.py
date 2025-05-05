@@ -77,7 +77,7 @@ def validate_secret_code(code: str):
         if stored_code == code:
             return JSONResponse(content={"valid": True}, status_code=200)
         else:
-            return JSONResponse(content={"valid": False}, status_code=400)
+            return JSONResponse(content={"valid": False}, status_code=200)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Redis error: {str(e)}")
     
